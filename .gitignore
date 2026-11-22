@@ -1,0 +1,14 @@
+*.iml
+.gradle
+.kotlin/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/functions/node_modules/
+/functions/lib/
+/functions/.firebase/
+/captures/
+.externalNativeBuild/
+.cxx/
