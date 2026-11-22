@@ -523,19 +523,6 @@ fun ReportFormScreen(
 
             Spacer(Modifier.height(10.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F3EC))
-            ) {
-                Text(
-                    "No internet? Your report will be saved on this phone and sent when you reconnect.",
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                    fontSize = 12.sp,
-                    color = GreenDark
-                )
-            }
-
             Spacer(Modifier.height(20.dp))
 
             // CATEGORY
@@ -971,11 +958,6 @@ fun ReportFormScreen(
                                     onFailure = { message ->
                                         submitting = false
                                         if (ReportStore.find(newReport.id)?.status == ReportStatus.PENDING) {
-                                            Toast.makeText(
-                                                ctx,
-                                                "Connection lost. Your report is saved and will sync when you reconnect.",
-                                                Toast.LENGTH_LONG
-                                            ).show()
                                             onSubmit()
                                         } else {
                                             error = message.ifBlank {
@@ -994,11 +976,13 @@ fun ReportFormScreen(
                                                 )
                                             }
 
-                                            Toast.makeText(
-                                                ctx,
-                                                if (queued) "Report saved on this phone. Sign in while connected to send it." else "Report submitted successfully.",
-                                                Toast.LENGTH_LONG
-                                            ).show()
+                                            if (!queued) {
+                                                Toast.makeText(
+                                                    ctx,
+                                                    "Report submitted successfully.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
 
                                             onSubmit()
                                         }
@@ -1011,13 +995,6 @@ fun ReportFormScreen(
                                 }
                             } else {
                                 ReportStore.addPending(newReport)
-
-                                Toast.makeText(
-                                    ctx,
-                                    "Report saved offline. It will sync when internet is available.",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
                                 onSubmit()
                             }
                         }

@@ -8,6 +8,7 @@ initializeApp();
 
 const db = getFirestore();
 const auth = getAuth();
+const administratorManagerEmail = "adminofficer@reportitmalawi.mw";
 
 async function requireAdministratorManager(request) {
   if (!request.auth) {
@@ -15,7 +16,13 @@ async function requireAdministratorManager(request) {
   }
 
   const manager = await db.collection("users").doc(request.auth.uid).get();
-  if (!manager.exists || manager.get("role") !== "ADMIN" || manager.get("isActive") === false) {
+  const signedInEmail = (request.auth.token.email || "").trim().toLowerCase();
+  if (
+    signedInEmail !== administratorManagerEmail ||
+    !manager.exists ||
+    manager.get("role") !== "ADMIN" ||
+    manager.get("isActive") === false
+  ) {
     throw new HttpsError("permission-denied", "Only the administrator manager can manage staff accounts.");
   }
 }

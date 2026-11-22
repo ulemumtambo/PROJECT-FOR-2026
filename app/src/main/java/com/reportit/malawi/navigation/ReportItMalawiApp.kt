@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.reportit.malawi.data.ReportStore
+import com.reportit.malawi.model.Role
 import com.reportit.malawi.ui.screens.admin.AdminDashboardScreen
 import com.reportit.malawi.ui.screens.admin.AdminReportsScreen
 import com.reportit.malawi.ui.screens.admin.UpdateStatusScreen
@@ -30,6 +31,17 @@ import com.reportit.malawi.ui.screens.common.NotificationsScreen
 import com.reportit.malawi.ui.screens.common.ReportDetailsScreen
 import com.reportit.malawi.ui.screens.common.SettingsScreen
 import com.reportit.malawi.util.homeRoute
+import com.reportit.malawi.util.AdminAccountPolicy
+
+@Composable
+private fun RedirectToRoleHome(nav: androidx.navigation.NavHostController) {
+    LaunchedEffect(ReportStore.user.role, ReportStore.user.email) {
+        nav.navigate(homeRoute()) {
+            popUpTo(0)
+            launchSingleTop = true
+        }
+    }
+}
 
 /**
  * ReportItMalawiApp: I created this root composable to manage navigation routes,
@@ -107,21 +119,41 @@ fun ReportItMalawiApp() {
         composable("forgot") { ForgotPasswordScreen(onBack = { nav.popBackStack() }) }
 
         composable("citizenDashboard") {
-            CitizenDashboardScreen(nav,
-                onReport = { nav.navigate("report") },
-                onDetails = { nav.navigate("details/$it") })
+            if (ReportStore.user.role == Role.CITIZEN) {
+                CitizenDashboardScreen(nav,
+                    onReport = { nav.navigate("report") },
+                    onDetails = { nav.navigate("details/$it") })
+            } else {
+                RedirectToRoleHome(nav)
+            }
         }
 
         composable("report") {
-            ReportFormScreen(
-                onBack = { nav.popBackStack() },
-                onSubmit = { nav.navigate("track") { popUpTo("citizenDashboard") } }
-            )
+            if (ReportStore.user.role == Role.CITIZEN) {
+                ReportFormScreen(
+                    onBack = { nav.popBackStack() },
+                    onSubmit = { nav.navigate("track") { popUpTo("citizenDashboard") } }
+                )
+            } else {
+                RedirectToRoleHome(nav)
+            }
         }
 
-        composable("track") { TrackReportsScreen(nav, onDetails = { nav.navigate("details/$it") }) }
+        composable("track") {
+            if (ReportStore.user.role == Role.CITIZEN) {
+                TrackReportsScreen(nav, onDetails = { nav.navigate("details/$it") })
+            } else {
+                RedirectToRoleHome(nav)
+            }
+        }
 
-        composable("notifications") { NotificationsScreen(nav) }
+        composable("notifications") {
+            if (AdminAccountPolicy.isAdministratorManager(ReportStore.user.role, ReportStore.user.email)) {
+                RedirectToRoleHome(nav)
+            } else {
+                NotificationsScreen(nav)
+            }
+        }
 
         composable("settings") {
             SettingsScreen(nav, onLogout = {
@@ -131,25 +163,43 @@ fun ReportItMalawiApp() {
         }
 
         composable("admin") {
-            AdminDashboardScreen(nav,
-                onManage = { nav.navigate("adminReports") },
-                onDetails = { nav.navigate("details/$it") })
+            if (ReportStore.user.role == Role.OFFICER ||
+                AdminAccountPolicy.isAdministratorManager(ReportStore.user.role, ReportStore.user.email)
+            ) {
+                AdminDashboardScreen(nav,
+                    onManage = { nav.navigate("adminReports") },
+                    onDetails = { nav.navigate("details/$it") })
+            } else {
+                RedirectToRoleHome(nav)
+            }
         }
 
         composable("adminReports") {
-            AdminReportsScreen(nav,
-                onDetails = { nav.navigate("details/$it") },
-                onUpdate = { nav.navigate("update/$it") })
+            if (ReportStore.user.role == Role.OFFICER) {
+                AdminReportsScreen(nav,
+                    onDetails = { nav.navigate("details/$it") },
+                    onUpdate = { nav.navigate("update/$it") })
+            } else {
+                RedirectToRoleHome(nav)
+            }
         }
 
         composable("details/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) {
             val id = it.arguments?.getString("id").orEmpty()
-            ReportDetailsScreen(id, onBack = { nav.popBackStack() }, onUpdate = { nav.navigate("update/$id") })
+            if (ReportStore.user.role != Role.ADMIN) {
+                ReportDetailsScreen(id, onBack = { nav.popBackStack() }, onUpdate = { nav.navigate("update/$id") })
+            } else {
+                RedirectToRoleHome(nav)
+            }
         }
 
         composable("update/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) {
             val id = it.arguments?.getString("id").orEmpty()
-            UpdateStatusScreen(id, onBack = { nav.popBackStack() })
+            if (ReportStore.user.role == Role.OFFICER) {
+                UpdateStatusScreen(id, onBack = { nav.popBackStack() })
+            } else {
+                RedirectToRoleHome(nav)
+            }
         }
     }
 }

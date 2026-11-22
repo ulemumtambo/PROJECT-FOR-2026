@@ -164,7 +164,7 @@ private fun ManageAdministratorsDialog(
     onAddClick: () -> Unit
 ) {
     val ctx = LocalContext.current
-    if (ReportStore.user.role != com.reportit.malawi.model.Role.ADMIN) return
+    if (!AdminAccountPolicy.isAdministratorManager(ReportStore.user.role, ReportStore.user.email)) return
     val admins = ReportStore.adminAccounts
 
     LaunchedEffect(Unit) {
@@ -306,17 +306,119 @@ private fun ManageAdministratorsDialog(
     )
 }
 
-/**
- * ADMIN DASHBOARD
- */
+@Composable
+private fun AdministratorManagementScreen(nav: NavHostController) {
+    val ctx = LocalContext.current
+    var showManageOfficers by rememberSaveable { mutableStateOf(false) }
+    var showAddOfficer by rememberSaveable { mutableStateOf(false) }
+    var addingOfficer by remember { mutableStateOf(false) }
+    var addOfficerError by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) { ReportStore.loadAdminAccounts() }
+
+    if (showManageOfficers) {
+        ManageAdministratorsDialog(
+            onDismiss = { showManageOfficers = false },
+            onAddClick = {
+                showManageOfficers = false
+                showAddOfficer = true
+            }
+        )
+    }
+
+    if (showAddOfficer) {
+        AddAdministratorDialog(
+            isLoading = addingOfficer,
+            error = addOfficerError,
+            onDismiss = {
+                if (!addingOfficer) {
+                    showAddOfficer = false
+                    addOfficerError = null
+                }
+            },
+            onCreate = { name, email ->
+                addingOfficer = true
+                addOfficerError = null
+                ReportStore.createAdminAccount(
+                    name = name,
+                    email = email,
+                    onSuccess = { message ->
+                        addingOfficer = false
+                        showAddOfficer = false
+                        Toast.makeText(ctx, message, Toast.LENGTH_LONG).show()
+                    },
+                    onFailure = { message ->
+                        addingOfficer = false
+                        addOfficerError = message
+                    }
+                )
+            }
+        )
+    }
+
+    AppScaffold(nav) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Header("Staff Administration", "Administrator manager", null)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(Icons.Default.People, contentDescription = null, tint = GreenDark)
+                    Text("Officer accounts", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(
+                        "Add officers, enable or disable their access, and remove staff accounts. Officers handle citizen reports; this account manages staff access.",
+                        color = TextSecondary
+                    )
+                    Button(
+                        onClick = { showManageOfficers = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                    ) {
+                        Icon(Icons.Default.People, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Manage officers (${ReportStore.adminAccounts.size})")
+                    }
+                    OutlinedButton(
+                        onClick = { showAddOfficer = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.PersonAdd, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Add an officer")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Officer dashboard and report handling. */
 @Composable
 fun AdminDashboardScreen(
     nav: NavHostController,
     onManage: () -> Unit,
     onDetails: (String) -> Unit
 ) {
+    if (AdminAccountPolicy.isAdministratorManager(ReportStore.user.role, ReportStore.user.email)) {
+        AdministratorManagementScreen(nav)
+        return
+    }
+
     val ctx = LocalContext.current
-    val canManageStaff = ReportStore.user.role == com.reportit.malawi.model.Role.ADMIN
 
     val all = ReportStore.reports
     val total = all.size
@@ -352,59 +454,6 @@ fun AdminDashboardScreen(
     var toDelete by remember {
         mutableStateOf<Report?>(null)
     }
-    var showAddAdministrator by rememberSaveable { mutableStateOf(false) }
-    var showManageAdministrators by rememberSaveable { mutableStateOf(false) }
-    var addingAdministrator by remember { mutableStateOf(false) }
-    var addAdministratorError by rememberSaveable { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        ReportStore.loadAdminAccounts()
-    }
-
-    if (canManageStaff && showManageAdministrators) {
-        ManageAdministratorsDialog(
-            onDismiss = { showManageAdministrators = false },
-            onAddClick = {
-                showManageAdministrators = false
-                showAddAdministrator = true
-            }
-        )
-    }
-
-    if (canManageStaff && showAddAdministrator) {
-        AddAdministratorDialog(
-            isLoading = addingAdministrator,
-            error = addAdministratorError,
-            onDismiss = {
-                if (!addingAdministrator) {
-                    showAddAdministrator = false
-                    addAdministratorError = null
-                }
-            },
-            onCreate = { name, email ->
-                addingAdministrator = true
-                addAdministratorError = null
-                ReportStore.createAdminAccount(
-                    name = name,
-                    email = email,
-                    onSuccess = { message ->
-                        addingAdministrator = false
-                        showAddAdministrator = false
-                        Toast.makeText(
-                            ctx,
-                            message,
-                            Toast.LENGTH_LONG
-                        ).show()
-                    },
-                    onFailure = { message ->
-                        addingAdministrator = false
-                        addAdministratorError = message
-                    }
-                )
-            }
-        )
-    }
-
     // Confirm deleting an individual report.
     toDelete?.let { report ->
         ConfirmDialog(
@@ -480,7 +529,7 @@ fun AdminDashboardScreen(
             item {
                 Header(
                     "Roads Authority Portal",
-                    if (canManageStaff) "Administrator Dashboard" else "Officer Dashboard",
+                    "Officer Dashboard",
                     null
                 )
             }
@@ -550,45 +599,6 @@ fun AdminDashboardScreen(
                                 fontSize = 13.sp
                             )
                         }
-                    }
-                }
-            }
-
-            if (canManageStaff) item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { showAddAdministrator = true },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Add Staff",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = { showManageAdministrators = true },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Manage Staff (${ReportStore.adminAccounts.size})",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
                     }
                 }
             }

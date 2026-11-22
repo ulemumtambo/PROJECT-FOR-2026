@@ -21,6 +21,7 @@ class UtilsTest {
      */
     @Test
     fun testCategoryLabelMapping() {
+        // Test: Converts report categories into readable labels.
         assertEquals("Deteriorating Roads", categoryLabel(ReportCategory.DETERIORATING_ROADS))
         assertEquals("Damaged Bridges", categoryLabel(ReportCategory.DAMAGED_BRIDGES))
         assertEquals("Blocked Drainage", categoryLabel(ReportCategory.BLOCKED_DRAINAGE))
@@ -37,6 +38,7 @@ class UtilsTest {
      */
     @Test
     fun testStatusLabelMapping() {
+        // Test: Converts report statuses into readable labels.
         assertEquals("Pending sync", statusLabel(ReportStatus.PENDING))
         assertEquals("Submitted", statusLabel(ReportStatus.SUBMITTED))
         assertEquals("Received", statusLabel(ReportStatus.RECEIVED))
@@ -51,6 +53,7 @@ class UtilsTest {
      */
     @Test
     fun testPriorityColorNotNull() {
+        // Test: Assigns colors for report priority levels.
         assertEquals(Red, priorityColor(Priority.HIGH))
         assertEquals(Amber, priorityColor(Priority.MEDIUM))
         assertNotNull(priorityColor(Priority.LOW))
@@ -63,6 +66,7 @@ class UtilsTest {
      */
     @Test
     fun testTimeAgoNow() {
+        // Test: Shows a current timestamp as "now".
         val now = System.currentTimeMillis()
         assertEquals("now", timeAgo(now))
     }

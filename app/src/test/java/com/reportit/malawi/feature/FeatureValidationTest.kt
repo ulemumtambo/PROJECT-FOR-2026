@@ -49,6 +49,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testLoginValidation_EmptyFields() {
+        // Test: Login rejects missing email and password.
         val error = validateLogin("", "")
         assertEquals("Enter your email and password.", error)
     }
@@ -59,6 +60,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testLoginValidation_InvalidEmail() {
+        // Test: Login rejects an invalid email address.
         val error = validateLogin("notanemail", "password123")
         assertEquals("Enter a valid email address.", error)
     }
@@ -69,6 +71,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testLoginValidation_ShortPassword() {
+        // Test: Login rejects a password shorter than six characters.
         val error = validateLogin("citizen@malawi.mw", "123")
         assertEquals("Password must be at least 6 characters.", error)
     }
@@ -78,6 +81,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testLoginValidation_Success() {
+        // Test: Login accepts a valid email and password.
         val error = validateLogin("citizen@malawi.mw", "securepassword")
         assertEquals("", error)
     }
@@ -88,6 +92,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testSignupValidation_EmptyName() {
+        // Test: Account creation requires the user's name.
         val error = validateSignup("", "citizen@malawi.mw", "password123")
         assertEquals("Enter your full name.", error)
     }
@@ -97,6 +102,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testSignupValidation_InvalidEmail() {
+        // Test: Account creation rejects an invalid email address.
         val error = validateSignup("John Banda", "invalid-email", "password123")
         assertEquals("Enter a valid email address.", error)
     }
@@ -106,6 +112,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testSignupValidation_ShortPassword() {
+        // Test: Account creation requires a strong password.
         val error = validateSignup("John Banda", "citizen@malawi.mw", "12345")
         assertEquals("Please use a strong password.", error)
     }
@@ -115,6 +122,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testSignupValidation_PasswordMismatch() {
+        // Test: Account creation rejects passwords that do not match.
         val error = validateSignup("John Banda", "citizen@malawi.mw", "password123", "password456")
         assertEquals("Passwords do not match.", error)
     }
@@ -124,6 +132,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testSignupValidation_Success() {
+        // Test: Account creation accepts valid matching details.
         val error = validateSignup("John Banda", "citizen@malawi.mw", "password123", "password123")
         assertEquals("", error)
     }
@@ -134,6 +143,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testReportValidation_EmptyTitle() {
+        // Test: A report requires a title.
         val error = validateReportForm("", "Deep pothole on road", "Lilongwe")
         assertEquals("Please enter a title.", error)
     }
@@ -144,6 +154,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testReportValidation_EmptyDescription() {
+        // Test: A report requires a description.
         val error = validateReportForm("Pothole", "", "Lilongwe")
         assertEquals("Please describe the problem.", error)
     }
@@ -154,6 +165,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testReportValidation_EmptyLocation() {
+        // Test: A report requires a location.
         val error = validateReportForm("Pothole", "Deep pothole on road", "")
         assertEquals("Please add the location.", error)
     }
@@ -163,6 +175,7 @@ class FeatureValidationTest {
      */
     @Test
     fun testReportValidation_Success() {
+        // Test: A report accepts a title, description, and location.
         val error = validateReportForm("Pothole", "Deep pothole on road", "Lilongwe")
         assertEquals("", error)
     }

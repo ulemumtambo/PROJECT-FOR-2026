@@ -37,6 +37,7 @@ class SystemIntegrationTest {
      */
     @Test
     fun testOfficerEmailDetectionAndRoleRouting() {
+        // Test: Routes citizens and officers to the correct dashboard.
         val citizenEmail = "citizen@malawi.mw"
         val isCitizenOfficer = checkIsOfficer(citizenEmail)
         val citizenRole = if (isCitizenOfficer) Role.OFFICER else Role.CITIZEN
@@ -68,6 +69,7 @@ class SystemIntegrationTest {
      */
     @Test
     fun testOfflineFirstReportStorageModel() {
+        // Test: Keeps a new offline report pending until it can sync.
         val citizenName = "Grace Phiri"
         val citizenEmail = "grace@malawi.mw"
 
@@ -95,6 +97,7 @@ class SystemIntegrationTest {
      */
     @Test
     fun testReportLifecycleStateTransitions() {
+        // Test: Moves a report through its complete status lifecycle.
         val report = Report(
             id = "RTM-12345",
             title = "Damaged Bridge in Mzuzu",
@@ -131,6 +134,7 @@ class SystemIntegrationTest {
      */
     @Test
     fun testReportNotificationModelGeneration() {
+        // Test: Creates a report update notification for the right citizen.
         val notification = AppNotification(
             id = System.nanoTime(),
             message = "Your report \"Damaged Bridge\" has been resolved.",

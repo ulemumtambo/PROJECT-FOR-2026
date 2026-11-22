@@ -23,6 +23,7 @@ import com.reportit.malawi.model.ReportStatus
 import com.reportit.malawi.model.Role
 import com.reportit.malawi.model.UserSession
 import com.reportit.malawi.util.hashPassword
+import com.reportit.malawi.util.AdminAccountPolicy
 import com.reportit.malawi.util.isOnline
 import com.reportit.malawi.util.statusLabel
 import com.reportit.malawi.util.toEntity
@@ -113,12 +114,15 @@ object ReportStore {
                         resetSession()
                     } else {
                         val cloudRole = cloudProfile?.getString("role")?.trim()?.uppercase()
-                        val role = when (cloudRole) {
+                        val resolvedRole = when (cloudRole) {
                             "ADMIN" -> Role.ADMIN
                             "OFFICER" -> Role.OFFICER
                             "CITIZEN" -> Role.CITIZEN
                             else -> runCatching { Role.valueOf(account.role) }.getOrDefault(Role.CITIZEN)
                         }
+                        val role = if (resolvedRole == Role.ADMIN &&
+                            !AdminAccountPolicy.isAdministratorManager(resolvedRole, account.email)
+                        ) Role.OFFICER else resolvedRole
                         user = UserSession(
                             cloudProfile?.getString("name")?.takeIf { it.isNotBlank() } ?: account.name,
                             account.email,
@@ -147,7 +151,9 @@ object ReportStore {
             try {
                 val localReports = roomDb?.reportDao()?.getAllReports()?.map { it.toReport() } ?: emptyList()
                 withContext(Dispatchers.Main) {
-                    if (localReports.isNotEmpty()) {
+                    if (user.role == Role.ADMIN) {
+                        reports.clear()
+                    } else if (localReports.isNotEmpty()) {
                         reports.clear()
                         reports.addAll(localReports)
                     }
@@ -238,7 +244,7 @@ object ReportStore {
                                 ?: cleanEmail.substringBefore("@")
 
                             val appRole = when (roleValue) {
-                                "ADMIN" -> Role.ADMIN
+                                "ADMIN" -> if (AdminAccountPolicy.isAdministratorManager(Role.ADMIN, cleanEmail)) Role.ADMIN else Role.OFFICER
                                 "OFFICER" -> Role.OFFICER
                                 "CITIZEN" -> Role.CITIZEN
                                 else -> {
@@ -317,7 +323,10 @@ object ReportStore {
                 return@launch
             }
 
-            val appRole = runCatching { Role.valueOf(localAccount.role) }.getOrDefault(Role.CITIZEN)
+            val storedRole = runCatching { Role.valueOf(localAccount.role) }.getOrDefault(Role.CITIZEN)
+            val appRole = if (storedRole == Role.ADMIN &&
+                !AdminAccountPolicy.isAdministratorManager(storedRole, localAccount.email)
+            ) Role.OFFICER else storedRole
             setActiveUser(UserSession(localAccount.name, localAccount.email, appRole))
             startListening()
             onSuccess()
@@ -414,20 +423,8 @@ object ReportStore {
     ) {
         val cleanName = name.trim()
         val cleanEmail = email.trim()
-        val domain = cleanEmail.substringAfterLast('@', "")
-
-        if (user.role != Role.ADMIN) {
-            onFailure("Only administrators can add administrators.")
-            return
-        }
-        if (cleanName.length < 2) {
-            onFailure("Enter the administrator's full name.")
-            return
-        }
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() ||
-            !domain.endsWith(".mw", ignoreCase = true)
-        ) {
-            onFailure("Enter a valid email address whose domain ends in .mw.")
+        AdminAccountPolicy.validateCreate(user.role, user.email, cleanName, cleanEmail)?.let { error ->
+            onFailure(error)
             return
         }
 
@@ -565,6 +562,10 @@ object ReportStore {
         onFailure: ((String) -> Unit)? = null,
         onComplete: () -> Unit
     ) {
+        if (user.role != Role.CITIZEN) {
+            onFailure?.invoke("Only citizen accounts can submit reports.")
+            return
+        }
         val documentId = report.id.ifBlank {
             db.collection("reports").document().id
         }
@@ -652,6 +653,10 @@ object ReportStore {
 
     fun startListening() {
         stopListening()
+        if (user.role == Role.ADMIN) {
+            reports.clear()
+            return
+        }
         val uid = authenticatedUidForActiveUser() ?: return
 
         val query = if (user.role != Role.CITIZEN) {
@@ -754,10 +759,12 @@ object ReportStore {
     }
 
     fun find(id: String): Report? {
+        if (user.role == Role.ADMIN) return null
         return reports.firstOrNull { it.id == id }
     }
 
     fun myReports(): List<Report> {
+        if (user.role == Role.ADMIN) return emptyList()
         return if (user.role != Role.CITIZEN) {
             reports.sortedByDescending { it.createdAt }
         } else {
@@ -776,6 +783,7 @@ object ReportStore {
     }
 
     fun addPending(report: Report) {
+        if (user.role != Role.CITIZEN) return
         val pendingReport = report.copy(status = ReportStatus.PENDING)
 
         // Save to Room DB for offline persistence across app restarts
@@ -810,7 +818,7 @@ object ReportStore {
             return
         }
 
-        if (user.role == Role.CITIZEN) {
+        if (!AdminAccountPolicy.canHandleReports(user.role)) {
             onFailure?.invoke("Only authorised officers can update reports.")
             return
         }
@@ -854,7 +862,7 @@ object ReportStore {
         onFailure: ((String) -> Unit)? = null,
         onComplete: () -> Unit
     ) {
-        if (user.role == Role.CITIZEN) {
+        if (!AdminAccountPolicy.canHandleReports(user.role)) {
             onFailure?.invoke("Only authorised officers can delete reports.")
             return
         }
@@ -880,7 +888,7 @@ object ReportStore {
     }
 
     fun removeResolvedReports(onComplete: (Int) -> Unit) {
-        if (user.role == Role.CITIZEN) {
+        if (!AdminAccountPolicy.canHandleReports(user.role)) {
             onComplete(0)
             return
         }
@@ -1107,7 +1115,7 @@ object ReportStore {
     }
 
     fun loadAdminAccounts() {
-        if (user.role != Role.ADMIN) {
+        if (!AdminAccountPolicy.isAdministratorManager(user.role, user.email)) {
             adminAccounts.clear()
             return
         }
@@ -1156,12 +1164,10 @@ object ReportStore {
     }
 
     fun setAdminActive(email: String, isActive: Boolean, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
-        if (user.role != Role.ADMIN) {
-            onFailure("Only the administrator manager can modify administrator accounts.")
-            return
-        }
-        if (email.equals(user.email, ignoreCase = true)) {
-            onFailure("You cannot disable your own active account.")
+        AdminAccountPolicy.validateManagement(
+            user.role, user.email, email, AdminAccountPolicy.Action.CHANGE_ACCESS
+        )?.let { error ->
+            onFailure(error)
             return
         }
         val ctx = appContext
@@ -1187,12 +1193,10 @@ object ReportStore {
     }
 
     fun removeAdminAccount(email: String, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
-        if (user.role != Role.ADMIN) {
-            onFailure("Only the administrator manager can remove administrator accounts.")
-            return
-        }
-        if (email.equals(user.email, ignoreCase = true)) {
-            onFailure("You cannot remove your own account.")
+        AdminAccountPolicy.validateManagement(
+            user.role, user.email, email, AdminAccountPolicy.Action.REMOVE
+        )?.let { error ->
+            onFailure(error)
             return
         }
         val ctx = appContext

@@ -18,6 +18,7 @@ class ModelsTest {
      */
     @Test
     fun testUserSessionCreation() {
+        // Test: Creates a citizen session with the correct name, email, and role.
         val user = UserSession("John Doe", "john@example.com", Role.CITIZEN)
         assertEquals("John Doe", user.name)
         assertEquals("john@example.com", user.email)
@@ -31,6 +32,7 @@ class ModelsTest {
      */
     @Test
     fun testOfficerUserSessionCreation() {
+        // Test: Creates an officer session with the correct name, email, and role.
         val admin = UserSession("Road Officer", "roadadmin@gmail.com", Role.OFFICER)
         assertEquals("Road Officer", admin.name)
         assertEquals("roadadmin@gmail.com", admin.email)
@@ -45,6 +47,7 @@ class ModelsTest {
      */
     @Test
     fun testReportModelCreation() {
+        // Test: Creates a report with the expected details and default values.
         val report = Report(
             id = "RTM-00100",
             title = "Pothole on Chipembere Highway",
@@ -74,6 +77,7 @@ class ModelsTest {
      */
     @Test
     fun testAppNotificationModel() {
+        // Test: Creates a notification with the expected message and audience.
         val notification = AppNotification(
             id = 1L,
             message = "Your report has been received.",

@@ -104,19 +104,27 @@ data class Tab(val label: String, val icon: ImageVector, val route: String)
 
 @Composable
 fun BottomNav(nav: NavHostController) {
-    val officer = ReportStore.user.role != Role.CITIZEN
+    val manager = AdminAccountPolicy.isAdministratorManager(ReportStore.user.role, ReportStore.user.email)
+    val officer = ReportStore.user.role == Role.OFFICER
     val home = homeRoute()
-    val tabs = if (officer) listOf(
+    val tabs = when {
+        manager -> listOf(
+            Tab("Staff", Icons.Default.People, "admin"),
+            Tab("Settings", Icons.Default.Settings, "settings")
+        )
+        officer -> listOf(
         Tab("Dashboard", Icons.Default.Dashboard, "admin"),
         Tab("Reports", Icons.AutoMirrored.Filled.List, "adminReports"),
         Tab("Alerts", Icons.Default.Notifications, "notifications"),
         Tab("Settings", Icons.Default.Settings, "settings")
-    ) else listOf(
+        )
+        else -> listOf(
         Tab("Home", Icons.Default.Home, "citizenDashboard"),
         Tab("Reports", Icons.AutoMirrored.Filled.List, "track"),
         Tab("Alerts", Icons.Default.Notifications, "notifications"),
         Tab("Settings", Icons.Default.Settings, "settings")
-    )
+        )
+    }
     val current = nav.currentBackStackEntryAsState().value?.destination?.route
     val unreadCount = ReportStore.myNotifications().count { !it.read }
 

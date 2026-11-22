@@ -25,6 +25,7 @@ class ComponentLogicTest {
      */
     @Test
     fun testCategoryLabelsFormatting() {
+        // Test: Displays each report category with a readable label.
         assertEquals("Deteriorating Roads", categoryLabel(ReportCategory.DETERIORATING_ROADS))
         assertEquals("Damaged Bridges", categoryLabel(ReportCategory.DAMAGED_BRIDGES))
         assertEquals("Blocked Drainage", categoryLabel(ReportCategory.BLOCKED_DRAINAGE))
@@ -40,6 +41,7 @@ class ComponentLogicTest {
      */
     @Test
     fun testStatusLabelsFormatting() {
+        // Test: Displays each report status with a readable label.
         assertEquals("Pending sync", statusLabel(ReportStatus.PENDING))
         assertEquals("Submitted", statusLabel(ReportStatus.SUBMITTED))
         assertEquals("Received", statusLabel(ReportStatus.RECEIVED))
@@ -53,6 +55,7 @@ class ComponentLogicTest {
      */
     @Test
     fun testPriorityColorsMapping() {
+        // Test: Uses the expected color for each priority level.
         assertEquals(Red, priorityColor(Priority.HIGH))
         assertEquals(Amber, priorityColor(Priority.MEDIUM))
         assertNotNull(priorityColor(Priority.LOW))
@@ -64,6 +67,7 @@ class ComponentLogicTest {
      */
     @Test
     fun testTimeAgoFormatting() {
+        // Test: Formats report timestamps as time-ago text.
         val now = System.currentTimeMillis()
         assertEquals("now", timeAgo(now))
 
